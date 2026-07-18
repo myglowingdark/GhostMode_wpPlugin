@@ -318,16 +318,28 @@ class Ghost_Mode_Sessions {
 	 *
 	 * @param int $page     1-based page.
 	 * @param int $per_page Rows per page.
+	 * @param int $user_id  Optional: limit to one user (0 = all).
 	 * @return array{rows:array,total:int,page:int,per_page:int,total_pages:int}
 	 */
-	public static function get_log_page( $page = 1, $per_page = self::PER_PAGE_DEFAULT ) {
-		$log       = self::get_log();
-		$total     = count( $log );
-		$per_page  = max( 1, min( 100, absint( $per_page ) ) );
+	public static function get_log_page( $page = 1, $per_page = self::PER_PAGE_DEFAULT, $user_id = 0 ) {
+		$log = self::get_log();
+		$user_id = absint( $user_id );
+		if ( $user_id > 0 ) {
+			$log = array_values(
+				array_filter(
+					$log,
+					static function ( $row ) use ( $user_id ) {
+						return absint( $row['user_id'] ?? 0 ) === $user_id;
+					}
+				)
+			);
+		}
+		$total       = count( $log );
+		$per_page    = max( 1, min( 100, absint( $per_page ) ) );
 		$total_pages = max( 1, (int) ceil( $total / $per_page ) );
-		$page      = max( 1, min( $total_pages, absint( $page ) ) );
-		$offset    = ( $page - 1 ) * $per_page;
-		$rows      = array_slice( $log, $offset, $per_page );
+		$page        = max( 1, min( $total_pages, absint( $page ) ) );
+		$offset      = ( $page - 1 ) * $per_page;
+		$rows        = array_slice( $log, $offset, $per_page );
 
 		return array(
 			'rows'        => $rows,

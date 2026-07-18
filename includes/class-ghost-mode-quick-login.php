@@ -395,7 +395,12 @@ class Ghost_Mode_Quick_Login {
 
 		self::revoke_link( $user_id, $link_id );
 
-		wp_safe_redirect( ghost_mode_get_settings_url( array( 'quick_revoked' => '1' ) ) );
+		$redirect_to = isset( $_POST['redirect_to'] ) ? sanitize_key( wp_unslash( $_POST['redirect_to'] ) ) : 'settings';
+		if ( $redirect_to === 'profile' ) {
+			wp_safe_redirect( add_query_arg( 'quick_revoked', '1', admin_url( 'profile.php' ) ) );
+		} else {
+			wp_safe_redirect( ghost_mode_get_settings_url( array( 'quick_revoked' => '1' ) ) );
+		}
 		exit;
 	}
 

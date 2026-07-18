@@ -14,6 +14,8 @@ class Ghost_Mode_Settings {
 		add_action( 'admin_print_styles-plugins.php', array( $this, 'print_plugins_list_icon' ) );
 		add_action( 'admin_post_ghost_mode_regenerate_unlock', array( $this, 'handle_regenerate_unlock' ) );
 		add_action( 'update_option_' . GHOST_MODE_SETTINGS_OPTION, array( $this, 'maybe_flush_rewrites' ), 10, 2 );
+		// Non-admins: show own shortcuts + sessions on Profile (read-only sessions).
+		add_action( 'show_user_profile', array( $this, 'render_profile_panels' ) );
 	}
 
 	public function register_menu() {
@@ -270,8 +272,13 @@ class Ghost_Mode_Settings {
 	}
 
 	public function enqueue_assets( $hook ) {
-		$allowed = array( 'ngobuddy_page_ghost-mode', 'settings_page_ghost-mode', 'toplevel_page_ghost-mode' );
+		$allowed = array( 'ngobuddy_page_ghost-mode', 'settings_page_ghost-mode', 'toplevel_page_ghost-mode', 'profile.php', 'user-edit.php' );
 		if ( ! in_array( $hook, $allowed, true ) ) {
+			return;
+		}
+
+		// Profile panels are for the viewing user when they are not a full admin.
+		if ( in_array( $hook, array( 'profile.php', 'user-edit.php' ), true ) && current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
@@ -289,6 +296,33 @@ class Ghost_Mode_Settings {
 			GHOST_MODE_VERSION,
 			true
 		);
+	}
+
+	/**
+	 * Quick login + session log on Profile for non-admin users (own account only).
+	 *
+	 * @param WP_User $user Profile user.
+	 */
+	public function render_profile_panels( $user ) {
+		if ( ! ( $user instanceof WP_User ) ) {
+			return;
+		}
+		// Admins manage this from Ghost Mode settings; profile is for everyone else.
+		if ( user_can( $user, 'manage_options' ) || ! current_user_can( 'read' ) ) {
+			return;
+		}
+		// Only on your own profile (or when an admin edits someone — skip; admins use settings).
+		if ( (int) $user->ID !== get_current_user_id() ) {
+			return;
+		}
+
+		if ( isset( $_GET['quick_revoked'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Quick login shortcut revoked.', 'ghost-mode' ) . '</p></div>';
+		}
+
+		echo '<h2>' . esc_html__( 'Ghost Mode security', 'ghost-mode' ) . '</h2>';
+		$this->render_quick_login_panel( (int) $user->ID, 'profile' );
+		$this->render_sessions_panel( (int) $user->ID, 'profile' );
 	}
 
 	public function render_page() {
@@ -576,8 +610,8 @@ class Ghost_Mode_Settings {
 				<?php submit_button( __( 'Save Settings', 'ghost-mode' ) ); ?>
 			</form>
 
-			<?php $this->render_quick_login_panel(); ?>
-			<?php $this->render_sessions_panel(); ?>
+			<?php $this->render_quick_login_panel( get_current_user_id(), 'admin' ); ?>
+			<?php $this->render_sessions_panel( 0, 'admin' ); ?>
 			<?php $this->render_lockout_panel(); ?>
 			<?php $this->render_security_suggestions(); ?>
 
@@ -615,13 +649,17 @@ class Ghost_Mode_Settings {
 
 	/**
 	 * Current user's quick-login device shortcuts + revoke.
+	 *
+	 * @param int    $user_id User ID.
+	 * @param string $context admin|profile.
 	 */
-	private function render_quick_login_panel() {
-		$user_id = get_current_user_id();
+	private function render_quick_login_panel( $user_id = 0, $context = 'admin' ) {
+		$user_id = $user_id ? (int) $user_id : get_current_user_id();
 		$links   = Ghost_Mode_Quick_Login::prune_expired(
 			Ghost_Mode_Quick_Login::get_links( $user_id ),
 			$user_id
 		);
+		$redirect = ( $context === 'profile' ) ? 'profile' : 'settings';
 		?>
 		<div class="ghost-mode-urls-card ghost-mode-quick-card">
 			<h2><?php esc_html_e( 'Your quick login shortcuts', 'ghost-mode' ); ?></h2>
@@ -678,6 +716,7 @@ class Ghost_Mode_Settings {
 										<input type="hidden" name="action" value="ghost_mode_quick_revoke" />
 										<input type="hidden" name="link_id" value="<?php echo esc_attr( $link_id ); ?>" />
 										<input type="hidden" name="user_id" value="<?php echo esc_attr( (string) $user_id ); ?>" />
+										<input type="hidden" name="redirect_to" value="<?php echo esc_attr( $redirect ); ?>" />
 										<?php wp_nonce_field( 'ghost_mode_quick_revoke' ); ?>
 										<?php submit_button( __( 'Revoke', 'ghost-mode' ), 'small', 'submit', false ); ?>
 									</form>
@@ -794,17 +833,25 @@ class Ghost_Mode_Settings {
 	}
 
 	/**
-	 * Session log table with pagination + CSV export.
+	 * Session log table with pagination + CSV export (admin) or read-only own log (profile).
+	 *
+	 * @param int    $user_id 0 = all users (admin); >0 = filter to that user.
+	 * @param string $context admin|profile.
 	 */
-	private function render_sessions_panel() {
-		$timeout  = Ghost_Mode_Sessions::timeout_minutes();
-		$per_page = Ghost_Mode_Sessions::PER_PAGE_DEFAULT;
-		$page     = isset( $_GET['gm_session_page'] ) ? absint( $_GET['gm_session_page'] ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$paged    = Ghost_Mode_Sessions::get_log_page( $page, $per_page );
-		$rows     = $paged['rows'];
-		$total    = $paged['total'];
-		$page     = $paged['page'];
-		$pages    = $paged['total_pages'];
+	private function render_sessions_panel( $user_id = 0, $context = 'admin' ) {
+		$is_profile = ( $context === 'profile' );
+		$user_id    = absint( $user_id );
+		$timeout    = Ghost_Mode_Sessions::timeout_minutes();
+		$per_page   = Ghost_Mode_Sessions::PER_PAGE_DEFAULT;
+		$page       = isset( $_GET['gm_session_page'] ) ? absint( $_GET['gm_session_page'] ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$paged      = Ghost_Mode_Sessions::get_log_page( $page, $per_page, $user_id );
+		$rows       = $paged['rows'];
+		$total      = $paged['total'];
+		$page       = $paged['page'];
+		$pages      = $paged['total_pages'];
+		$base_url   = $is_profile
+			? admin_url( 'profile.php' ) . '#ghost-mode-sessions'
+			: ghost_mode_get_settings_url() . '#ghost-mode-sessions';
 		?>
 		<div class="ghost-mode-urls-card ghost-mode-sessions-card" id="ghost-mode-sessions">
 			<div class="ghost-mode-sessions-header">
@@ -821,10 +868,14 @@ class Ghost_Mode_Settings {
 						} else {
 							esc_html_e( 'Forced session timeout is disabled (0 minutes). Sessions are still logged until logout.', 'ghost-mode' );
 						}
+						if ( $is_profile ) {
+							echo ' ';
+							esc_html_e( 'This list is view-only.', 'ghost-mode' );
+						}
 						?>
 					</p>
 				</div>
-				<?php if ( $total > 0 ) : ?>
+				<?php if ( ! $is_profile && $total > 0 ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-export-form">
 						<input type="hidden" name="action" value="ghost_mode_export_sessions" />
 						<?php wp_nonce_field( 'ghost_mode_export_sessions' ); ?>
@@ -851,13 +902,17 @@ class Ghost_Mode_Settings {
 				<table class="widefat striped ghost-mode-blocks-table">
 					<thead>
 						<tr>
-							<th><?php esc_html_e( 'User', 'ghost-mode' ); ?></th>
+							<?php if ( ! $is_profile ) : ?>
+								<th><?php esc_html_e( 'User', 'ghost-mode' ); ?></th>
+							<?php endif; ?>
 							<th><?php esc_html_e( 'IP', 'ghost-mode' ); ?></th>
 							<th><?php esc_html_e( 'MAC', 'ghost-mode' ); ?></th>
 							<th><?php esc_html_e( 'Login time', 'ghost-mode' ); ?></th>
 							<th><?php esc_html_e( 'Duration', 'ghost-mode' ); ?></th>
 							<th><?php esc_html_e( 'Status', 'ghost-mode' ); ?></th>
-							<th><?php esc_html_e( 'Action', 'ghost-mode' ); ?></th>
+							<?php if ( ! $is_profile ) : ?>
+								<th><?php esc_html_e( 'Action', 'ghost-mode' ); ?></th>
+							<?php endif; ?>
 						</tr>
 					</thead>
 					<tbody>
@@ -872,12 +927,14 @@ class Ghost_Mode_Settings {
 							}
 							?>
 							<tr>
-								<td>
-									<strong><?php echo esc_html( $row['user_login'] ?? '' ); ?></strong>
-									<?php if ( ! empty( $row['user_id'] ) ) : ?>
-										<br><span class="description">#<?php echo esc_html( (string) $row['user_id'] ); ?></span>
-									<?php endif; ?>
-								</td>
+								<?php if ( ! $is_profile ) : ?>
+									<td>
+										<strong><?php echo esc_html( $row['user_login'] ?? '' ); ?></strong>
+										<?php if ( ! empty( $row['user_id'] ) ) : ?>
+											<br><span class="description">#<?php echo esc_html( (string) $row['user_id'] ); ?></span>
+										<?php endif; ?>
+									</td>
+								<?php endif; ?>
 								<td><code><?php echo esc_html( $row['ip'] ?? '—' ); ?></code></td>
 								<td><code><?php echo esc_html( ! empty( $row['mac'] ) ? $row['mac'] : '—' ); ?></code></td>
 								<td>
@@ -885,19 +942,21 @@ class Ghost_Mode_Settings {
 								</td>
 								<td><?php echo esc_html( Ghost_Mode_Sessions::format_duration( $duration ) ); ?></td>
 								<td><?php echo esc_html( Ghost_Mode_Sessions::status_label( $status ) ); ?></td>
-								<td>
-									<?php if ( $is_active ) : ?>
-										<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-inline-form">
-											<input type="hidden" name="action" value="ghost_mode_end_session" />
-											<input type="hidden" name="session_id" value="<?php echo esc_attr( $row['id'] ?? '' ); ?>" />
-											<input type="hidden" name="gm_session_page" value="<?php echo esc_attr( (string) $page ); ?>" />
-											<?php wp_nonce_field( 'ghost_mode_end_session' ); ?>
-											<?php submit_button( __( 'End session', 'ghost-mode' ), 'secondary small', 'submit', false ); ?>
-										</form>
-									<?php else : ?>
-										—
-									<?php endif; ?>
-								</td>
+								<?php if ( ! $is_profile ) : ?>
+									<td>
+										<?php if ( $is_active ) : ?>
+											<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-inline-form">
+												<input type="hidden" name="action" value="ghost_mode_end_session" />
+												<input type="hidden" name="session_id" value="<?php echo esc_attr( $row['id'] ?? '' ); ?>" />
+												<input type="hidden" name="gm_session_page" value="<?php echo esc_attr( (string) $page ); ?>" />
+												<?php wp_nonce_field( 'ghost_mode_end_session' ); ?>
+												<?php submit_button( __( 'End session', 'ghost-mode' ), 'secondary small', 'submit', false ); ?>
+											</form>
+										<?php else : ?>
+											—
+										<?php endif; ?>
+									</td>
+								<?php endif; ?>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -917,9 +976,6 @@ class Ghost_Mode_Settings {
 							</span>
 							<span class="pagination-links">
 								<?php
-								$base_args = array( 'gm_session_page' => '%#%' );
-								$base_url  = ghost_mode_get_settings_url() . '#ghost-mode-sessions';
-
 								echo wp_kses_post(
 									paginate_links(
 										array(
@@ -933,25 +989,26 @@ class Ghost_Mode_Settings {
 										)
 									)
 								);
-								unset( $base_args );
 								?>
 							</span>
 						</div>
 					</div>
 				<?php endif; ?>
 
-				<div class="ghost-mode-sessions-actions">
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-export-form">
-						<input type="hidden" name="action" value="ghost_mode_export_sessions" />
-						<?php wp_nonce_field( 'ghost_mode_export_sessions' ); ?>
-						<?php submit_button( __( 'Export CSV', 'ghost-mode' ), 'secondary', 'submit', false ); ?>
-					</form>
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-regen-form" onsubmit="return confirm('<?php echo esc_js( __( 'Clear the entire session log?', 'ghost-mode' ) ); ?>');">
-						<input type="hidden" name="action" value="ghost_mode_clear_session_log" />
-						<?php wp_nonce_field( 'ghost_mode_clear_session_log' ); ?>
-						<?php submit_button( __( 'Clear session log', 'ghost-mode' ), 'delete', 'submit', false ); ?>
-					</form>
-				</div>
+				<?php if ( ! $is_profile ) : ?>
+					<div class="ghost-mode-sessions-actions">
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-export-form">
+							<input type="hidden" name="action" value="ghost_mode_export_sessions" />
+							<?php wp_nonce_field( 'ghost_mode_export_sessions' ); ?>
+							<?php submit_button( __( 'Export CSV', 'ghost-mode' ), 'secondary', 'submit', false ); ?>
+						</form>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="ghost-mode-regen-form" onsubmit="return confirm('<?php echo esc_js( __( 'Clear the entire session log?', 'ghost-mode' ) ); ?>');">
+							<input type="hidden" name="action" value="ghost_mode_clear_session_log" />
+							<?php wp_nonce_field( 'ghost_mode_clear_session_log' ); ?>
+							<?php submit_button( __( 'Clear session log', 'ghost-mode' ), 'delete', 'submit', false ); ?>
+						</form>
+					</div>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 		<?php
