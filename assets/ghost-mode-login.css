@@ -292,7 +292,7 @@ body.ghost-mode-body {
 
 .ghost-mode-secured-by__brand {
 	font-weight: 700;
-	color: var(--rpf-body, #526277);
+	color: #2271b1;
 }
 
 @media (max-width: 560px) {

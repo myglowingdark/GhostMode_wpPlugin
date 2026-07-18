@@ -128,6 +128,9 @@ class Ghost_Mode_Settings {
 		$output['login_alert_extra_emails'] = implode( ', ', array_unique( $extra_clean ) );
 		$output['attempt_review_enabled']   = ( isset( $input['attempt_review_enabled'] ) && $input['attempt_review_enabled'] === 'yes' ) ? 'yes' : 'no';
 		$output['quick_login_enabled']      = ( isset( $input['quick_login_enabled'] ) && $input['quick_login_enabled'] === 'yes' ) ? 'yes' : 'no';
+		$output['password_age_enabled']     = ( isset( $input['password_age_enabled'] ) && $input['password_age_enabled'] === 'yes' ) ? 'yes' : 'no';
+		$age_days = isset( $input['password_age_days'] ) ? absint( $input['password_age_days'] ) : Ghost_Mode_Password_Age::DEFAULT_DAYS;
+		$output['password_age_days'] = max( 1, min( 3650, $age_days ? $age_days : Ghost_Mode_Password_Age::DEFAULT_DAYS ) );
 
 		if ( $output['enabled'] === 'yes' ) {
 			add_settings_error(
@@ -477,6 +480,32 @@ class Ghost_Mode_Settings {
 							</label>
 							<p class="description">
 								<?php esc_html_e( 'Each shortcut works only on the browser where it was created, for 60 days. Max 3 per user. Wrong device silently goes to the homepage. The normal gate login URL always shows the full login form.', 'ghost-mode' ); ?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Password age reminder', 'ghost-mode' ); ?></th>
+						<td>
+							<label>
+								<input
+									type="checkbox"
+									name="<?php echo esc_attr( GHOST_MODE_SETTINGS_OPTION ); ?>[password_age_enabled]"
+									value="yes"
+									<?php checked( $settings['password_age_enabled'] ?? 'yes', 'yes' ); ?>
+								/>
+								<?php esc_html_e( 'After login, ask users to change their password if it is older than', 'ghost-mode' ); ?>
+							</label>
+							<input
+								type="number"
+								min="1"
+								max="3650"
+								class="small-text"
+								name="<?php echo esc_attr( GHOST_MODE_SETTINGS_OPTION ); ?>[password_age_days]"
+								value="<?php echo esc_attr( (string) ( $settings['password_age_days'] ?? 45 ) ); ?>"
+							/>
+							<?php esc_html_e( 'days', 'ghost-mode' ); ?>
+							<p class="description">
+								<?php esc_html_e( 'Shows a popup right after login when overdue. If skipped, a softer admin notice appears after 10 days. Default age: 45 days.', 'ghost-mode' ); ?>
 							</p>
 						</td>
 					</tr>

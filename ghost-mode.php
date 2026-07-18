@@ -27,6 +27,7 @@ require_once GHOST_MODE_PATH . 'includes/class-ghost-mode-settings.php';
 require_once GHOST_MODE_PATH . 'includes/class-ghost-mode-security.php';
 require_once GHOST_MODE_PATH . 'includes/class-ghost-mode-login.php';
 require_once GHOST_MODE_PATH . 'includes/class-ghost-mode-quick-login.php';
+require_once GHOST_MODE_PATH . 'includes/class-ghost-mode-password-age.php';
 
 /**
  * Default + merged settings.
@@ -62,6 +63,8 @@ function ghost_mode_get_settings() {
 		'login_alert_extra_emails'  => '',
 		'attempt_review_enabled'    => 'yes',
 		'quick_login_enabled'       => 'yes',
+		'password_age_enabled'      => 'yes',
+		'password_age_days'         => 45,
 	);
 	$saved = get_option( GHOST_MODE_SETTINGS_OPTION, array() );
 	if ( ! is_array( $saved ) ) {
@@ -241,6 +244,7 @@ function ghost_mode_bootstrap() {
 	new Ghost_Mode_Security();
 	$login = new Ghost_Mode_Login();
 	new Ghost_Mode_Quick_Login( $login );
+	new Ghost_Mode_Password_Age();
 }
 
 /**

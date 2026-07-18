@@ -238,6 +238,10 @@ class Ghost_Mode_Quick_Login {
 		if ( ! self::is_enabled() || $user_id <= 0 ) {
 			return false;
 		}
+		// Password-age prompt takes priority so two modals do not stack.
+		if ( class_exists( 'Ghost_Mode_Password_Age' ) && Ghost_Mode_Password_Age::should_show_prompt( $user_id ) ) {
+			return false;
+		}
 		$offered = absint( get_user_meta( $user_id, self::OFFER_META, true ) );
 		if ( $offered <= 0 ) {
 			return false;
@@ -332,6 +336,7 @@ class Ghost_Mode_Quick_Login {
 						<button type="button" class="button button-primary button-hero" id="ghost_mode_quick_saved"><?php esc_html_e( 'I’ve saved it', 'ghost-mode' ); ?></button>
 					</div>
 				</div>
+				<div class="ghost-mode-modal__brand" aria-hidden="true">GLOWINGDARK CARBON DOME</div>
 			</div>
 		</div>
 		<?php
