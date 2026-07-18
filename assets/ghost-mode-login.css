@@ -1,0 +1,295 @@
+/* Ghost Mode — branded login (HSF theme tokens) */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	min-height: 100%;
+}
+
+body.ghost-mode-body {
+	font-family: Poppins, "Segoe UI", system-ui, -apple-system, sans-serif;
+	color: var(--rpf-body, #526277);
+	background: #ffffff;
+	-webkit-font-smoothing: antialiased;
+}
+
+.ghost-mode-brand {
+	position: absolute;
+	top: 28px;
+	left: 32px;
+	z-index: 2;
+}
+
+.ghost-mode-brand-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	text-decoration: none;
+	color: var(--rpf-ink, #132238);
+}
+
+.ghost-mode-brand-logo {
+	display: block;
+	width: 36px;
+	height: 36px;
+	object-fit: contain;
+}
+
+.ghost-mode-brand-name {
+	font-size: 1.125rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: var(--rpf-ink, #132238);
+}
+
+.ghost-mode-main {
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 96px 20px 48px;
+}
+
+.ghost-mode-card {
+	width: 100%;
+	max-width: 380px;
+}
+
+.ghost-mode-title {
+	margin: 0 0 8px;
+	font-size: 2rem;
+	font-weight: 700;
+	line-height: 1.2;
+	color: var(--rpf-ink, #132238);
+	letter-spacing: -0.02em;
+}
+
+.ghost-mode-subtitle {
+	margin: 0 0 28px;
+	font-size: 0.95rem;
+	color: var(--rpf-body, #526277);
+}
+
+.ghost-mode-alert {
+	margin: 0 0 18px;
+	padding: 12px 14px;
+	border-radius: 6px;
+	font-size: 0.875rem;
+	line-height: 1.45;
+}
+
+.ghost-mode-alert--error {
+	background: #fef2f2;
+	color: #991b1b;
+	border: 1px solid #fecaca;
+}
+
+.ghost-mode-alert--success {
+	background: #ecfdf5;
+	color: #065f46;
+	border: 1px solid #a7f3d0;
+}
+
+.ghost-mode-form {
+	display: flex;
+	flex-direction: column;
+}
+
+.ghost-mode-label {
+	display: block;
+	margin: 0 0 8px;
+	font-size: 0.875rem;
+	font-weight: 700;
+	color: var(--rpf-ink, #132238);
+}
+
+.ghost-mode-input {
+	width: 100%;
+	height: 48px;
+	margin: 0 0 18px;
+	padding: 0 14px;
+	border: 1px solid #d7dde5;
+	border-radius: 6px;
+	background: #fff;
+	color: var(--rpf-ink, #132238);
+	font: inherit;
+	font-size: 0.9375rem;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ghost-mode-input::placeholder {
+	color: #a8b3c2;
+}
+
+.ghost-mode-input:focus {
+	outline: none;
+	border-color: var(--rpf-brand-blue, #195b9b);
+	box-shadow: 0 0 0 3px rgba(25, 91, 155, 0.15);
+}
+
+.ghost-mode-input--pin {
+	letter-spacing: 0.45em;
+	text-align: center;
+	font-size: 1.5rem;
+	font-weight: 700;
+	height: 56px;
+}
+
+.ghost-mode-password-wrap {
+	position: relative;
+	margin-bottom: 18px;
+}
+
+.ghost-mode-password-wrap .ghost-mode-input {
+	margin-bottom: 0;
+	padding-right: 48px;
+}
+
+.ghost-mode-toggle-password {
+	position: absolute;
+	top: 50%;
+	right: 10px;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--rpf-muted, #8091a7);
+	cursor: pointer;
+	border-radius: 6px;
+}
+
+.ghost-mode-toggle-password:hover {
+	color: var(--rpf-ink, #132238);
+}
+
+.ghost-mode-toggle-password .ghost-mode-eye-open,
+.ghost-mode-toggle-password .ghost-mode-eye-closed {
+	display: none;
+	flex-shrink: 0;
+}
+
+/* Password hidden: show open eye. Password visible: show slashed eye. */
+.ghost-mode-toggle-password:not(.is-visible) .ghost-mode-eye-open,
+.ghost-mode-toggle-password.is-visible .ghost-mode-eye-closed {
+	display: block;
+}
+
+.ghost-mode-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 0 0 22px;
+	flex-wrap: wrap;
+}
+
+.ghost-mode-remember {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.875rem;
+	color: var(--rpf-ink, #132238);
+	cursor: pointer;
+	user-select: none;
+}
+
+.ghost-mode-remember input {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	accent-color: var(--rpf-brand-blue, #195b9b);
+}
+
+.ghost-mode-link {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--rpf-brand-blue, #195b9b);
+	text-decoration: none;
+}
+
+.ghost-mode-link:hover {
+	color: var(--rpf-brand-blue-dark, #123f71);
+	text-decoration: underline;
+}
+
+.ghost-mode-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 50px;
+	margin: 0;
+	padding: 0 18px;
+	border: 0;
+	border-radius: 6px;
+	background: var(--rpf-brand-blue, #195b9b);
+	color: #fff;
+	font: inherit;
+	font-size: 1rem;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.ghost-mode-btn:hover {
+	background: var(--rpf-brand-blue-dark, #123f71);
+}
+
+.ghost-mode-btn:active {
+	transform: translateY(1px);
+}
+
+.ghost-mode-footer {
+	margin: 22px 0 0;
+	text-align: center;
+	font-size: 0.9rem;
+	color: var(--rpf-body, #526277);
+}
+
+.ghost-mode-footer a {
+	font-weight: 700;
+	color: var(--rpf-brand-blue, #195b9b);
+	text-decoration: none;
+}
+
+.ghost-mode-footer a:hover {
+	color: var(--rpf-brand-blue-dark, #123f71);
+	text-decoration: underline;
+}
+
+.ghost-mode-footer-arrow {
+	display: inline-block;
+	margin-left: 2px;
+}
+
+@media (max-width: 560px) {
+	.ghost-mode-brand {
+		top: 20px;
+		left: 20px;
+	}
+
+	.ghost-mode-brand-name {
+		font-size: 1rem;
+	}
+
+	.ghost-mode-main {
+		padding: 88px 16px 40px;
+		align-items: flex-start;
+	}
+
+	.ghost-mode-title {
+		font-size: 1.75rem;
+	}
+}
