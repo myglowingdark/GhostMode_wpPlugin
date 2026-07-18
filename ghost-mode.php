@@ -201,18 +201,57 @@ function ghost_mode_ensure_defaults() {
 }
 
 /**
- * Admin settings screen URL (NGOBuddy submenu when available, otherwise Settings).
+ * Admin settings screen URL.
  */
 function ghost_mode_get_settings_url( $args = array() ) {
-	if ( ghost_mode_is_ngobuddy_active() ) {
-		$url = admin_url( 'admin.php?page=ghost-mode' );
-	} else {
-		$url = admin_url( 'options-general.php?page=ghost-mode' );
-	}
+	$url = admin_url( 'admin.php?page=ghost-mode' );
 	if ( ! empty( $args ) && is_array( $args ) ) {
 		$url = add_query_arg( $args, $url );
 	}
 	return $url;
+}
+
+/**
+ * Lock icon URL used as the plugin mark.
+ */
+function ghost_mode_get_icon_url() {
+	return GHOST_MODE_URL . 'assets/icon.svg';
+}
+
+/**
+ * Whether the current user has a Ghost Mode alert (stale password or failed-attempt review).
+ *
+ * @param int $user_id User ID.
+ */
+function ghost_mode_user_has_alert( $user_id = 0 ) {
+	$user_id = $user_id ? (int) $user_id : get_current_user_id();
+	if ( $user_id <= 0 ) {
+		return false;
+	}
+	if ( class_exists( 'Ghost_Mode_Password_Age' ) && Ghost_Mode_Password_Age::is_enabled() && Ghost_Mode_Password_Age::is_stale( $user_id ) ) {
+		return true;
+	}
+	if ( class_exists( 'Ghost_Mode_Attempt_Review' ) && Ghost_Mode_Attempt_Review::get_review( $user_id ) ) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Menu / admin-bar title with optional red alert mark.
+ *
+ * @param string $label Base label.
+ * @param bool   $with_dot Whether to append the alert dot.
+ */
+function ghost_mode_menu_title( $label, $with_dot = null ) {
+	if ( null === $with_dot ) {
+		$with_dot = ghost_mode_user_has_alert();
+	}
+	$title = (string) $label;
+	if ( $with_dot ) {
+		$title .= ' <span class="ghost-mode-menu-dot" aria-hidden="true"></span>';
+	}
+	return $title;
 }
 
 function ghost_mode_activate() {

@@ -10,17 +10,21 @@ class Ghost_Mode_Settings {
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 26 );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'admin_head', array( $this, 'print_menu_styles' ) );
+		add_action( 'admin_print_styles-plugins.php', array( $this, 'print_plugins_list_icon' ) );
 		add_action( 'admin_post_ghost_mode_regenerate_unlock', array( $this, 'handle_regenerate_unlock' ) );
 		add_action( 'update_option_' . GHOST_MODE_SETTINGS_OPTION, array( $this, 'maybe_flush_rewrites' ), 10, 2 );
 	}
 
 	public function register_menu() {
-		// Soft complement: nest under NGOBuddy when present; otherwise Settings.
+		$menu_title = ghost_mode_menu_title( __( 'Ghost Mode', 'ghost-mode' ) );
+
+		// Soft complement: nest under NGOBuddy when present; otherwise top-level with lock icon.
 		if ( ghost_mode_is_ngobuddy_active() ) {
 			add_submenu_page(
 				'ngobuddy',
 				__( 'Ghost Mode', 'ghost-mode' ),
-				__( 'Ghost Mode', 'ghost-mode' ),
+				$menu_title,
 				'manage_options',
 				'ghost-mode',
 				array( $this, 'render_page' )
@@ -28,13 +32,71 @@ class Ghost_Mode_Settings {
 			return;
 		}
 
-		add_options_page(
+		add_menu_page(
 			__( 'Ghost Mode', 'ghost-mode' ),
-			__( 'Ghost Mode', 'ghost-mode' ),
+			$menu_title,
 			'manage_options',
 			'ghost-mode',
-			array( $this, 'render_page' )
+			array( $this, 'render_page' ),
+			'dashicons-lock',
+			58
 		);
+	}
+
+	/**
+	 * Red alert dot next to Ghost Mode menu labels.
+	 */
+	public function print_menu_styles() {
+		?>
+		<style id="ghost-mode-menu-css">
+			#adminmenu .ghost-mode-menu-dot,
+			#adminmenu .wp-submenu .ghost-mode-menu-dot {
+				display: inline-block;
+				width: 8px;
+				height: 8px;
+				margin-left: 6px;
+				border-radius: 50%;
+				background: #d63638;
+				vertical-align: middle;
+				box-shadow: 0 0 0 1px rgba(0,0,0,.15);
+			}
+			#adminmenu #toplevel_page_ghost-mode .wp-menu-image:before {
+				content: "\f160";
+			}
+		</style>
+		<?php
+	}
+
+	/**
+	 * Show the lock mark on the Plugins list row.
+	 */
+	public function print_plugins_list_icon() {
+		$icon = esc_url( ghost_mode_get_icon_url() );
+		?>
+		<style id="ghost-mode-plugins-icon-css">
+			.plugins tr[data-plugin="ghost-mode/ghost-mode.php"] .plugin-title .ghost-mode-plugin-icon,
+			.plugins tr[data-slug="ghost-mode"] .plugin-title .ghost-mode-plugin-icon {
+				display: inline-block;
+				width: 28px;
+				height: 28px;
+				margin: 0 8px 0 0;
+				vertical-align: middle;
+				background: url("<?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>") no-repeat center / contain;
+				border-radius: 6px;
+			}
+		</style>
+		<script>
+		(function () {
+			document.querySelectorAll('.plugins tr[data-plugin="ghost-mode/ghost-mode.php"] .plugin-title strong, .plugins tr[data-plugin*="ghost-mode.php"] .plugin-title strong').forEach(function (el) {
+				if (el.querySelector('.ghost-mode-plugin-icon')) { return; }
+				var mark = document.createElement('span');
+				mark.className = 'ghost-mode-plugin-icon';
+				mark.setAttribute('aria-hidden', 'true');
+				el.insertBefore(mark, el.firstChild);
+			});
+		})();
+		</script>
+		<?php
 	}
 
 	public function register_settings() {
@@ -208,7 +270,7 @@ class Ghost_Mode_Settings {
 	}
 
 	public function enqueue_assets( $hook ) {
-		$allowed = array( 'ngobuddy_page_ghost-mode', 'settings_page_ghost-mode' );
+		$allowed = array( 'ngobuddy_page_ghost-mode', 'settings_page_ghost-mode', 'toplevel_page_ghost-mode' );
 		if ( ! in_array( $hook, $allowed, true ) ) {
 			return;
 		}
