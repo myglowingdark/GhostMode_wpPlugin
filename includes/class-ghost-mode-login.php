@@ -574,6 +574,11 @@ class Ghost_Mode_Login {
 		</div>
 	</main>
 
+	<p class="ghost-mode-secured-by">
+		<?php esc_html_e( 'This website is secured by', 'ghost-mode' ); ?>
+		<span class="ghost-mode-secured-by__brand">Glowingdark Carbon Dome</span>
+	</p>
+
 	<script src="<?php echo esc_url( ghost_mode_get_login_asset_url( 'login.js' ) ); ?>"></script>
 </body>
 </html>

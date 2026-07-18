@@ -24,7 +24,7 @@ class Ghost_Mode_Quick_Login {
 	/** @var Ghost_Mode_Login|null */
 	private $login;
 
-	public function __construct( Ghost_Mode_Login $login = null ) {
+	public function __construct( ?Ghost_Mode_Login $login = null ) {
 		$this->login = $login;
 
 		add_action( 'parse_request', array( $this, 'maybe_flag_request' ), 1 );

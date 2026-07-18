@@ -230,12 +230,8 @@ add_action( 'plugins_loaded', 'ghost_mode_bootstrap' );
 function ghost_mode_bootstrap() {
 	ghost_mode_ensure_defaults();
 
-	// One-time flush so /{slug}/assets/* and /{slug}/go/* rewrites exist after plugin update.
-	if ( get_option( 'ghost_mode_rewrite_ver' ) !== '3' ) {
-		Ghost_Mode_Security::register_rewrite_rules();
-		flush_rewrite_rules( false );
-		update_option( 'ghost_mode_rewrite_ver', '3', false );
-	}
+	// Flush must wait for init — $wp_rewrite is not ready on plugins_loaded.
+	add_action( 'init', 'ghost_mode_maybe_flush_rewrites', 99 );
 
 	new Ghost_Mode_Lockout();
 	new Ghost_Mode_Attempt_Review();
@@ -245,4 +241,16 @@ function ghost_mode_bootstrap() {
 	new Ghost_Mode_Security();
 	$login = new Ghost_Mode_Login();
 	new Ghost_Mode_Quick_Login( $login );
+}
+
+/**
+ * One-time rewrite flush after plugin updates that add new rules.
+ */
+function ghost_mode_maybe_flush_rewrites() {
+	if ( get_option( 'ghost_mode_rewrite_ver' ) === '3' ) {
+		return;
+	}
+	Ghost_Mode_Security::register_rewrite_rules();
+	flush_rewrite_rules( false );
+	update_option( 'ghost_mode_rewrite_ver', '3', false );
 }

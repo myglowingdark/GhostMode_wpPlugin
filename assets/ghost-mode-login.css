@@ -274,6 +274,27 @@ body.ghost-mode-body {
 	margin-left: 2px;
 }
 
+.ghost-mode-secured-by {
+	position: fixed;
+	left: 50%;
+	bottom: 20px;
+	z-index: 2;
+	margin: 0;
+	padding: 0 16px;
+	transform: translateX(-50%);
+	text-align: center;
+	font-size: 0.75rem;
+	line-height: 1.4;
+	color: var(--rpf-muted, #8091a7);
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+.ghost-mode-secured-by__brand {
+	font-weight: 700;
+	color: var(--rpf-body, #526277);
+}
+
 @media (max-width: 560px) {
 	.ghost-mode-brand {
 		top: 20px;
@@ -291,5 +312,12 @@ body.ghost-mode-body {
 
 	.ghost-mode-title {
 		font-size: 1.75rem;
+	}
+
+	.ghost-mode-secured-by {
+		bottom: 14px;
+		font-size: 0.6875rem;
+		white-space: normal;
+		max-width: calc(100% - 32px);
 	}
 }
